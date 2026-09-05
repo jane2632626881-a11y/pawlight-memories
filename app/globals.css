@@ -11,3 +11,4 @@
 .screen-3 .identity h2{transform:none;margin:2px 0 10px}
 body,button,input,textarea,select,h1,h2,h3,.choice,.name-label{font-family:'FZZhanBiHei-M22S','Microsoft YaHei',sans-serif}
 small,.hint,.counter,.tiny-tag,.event-copy time,.event-copy p{font-family:'Microsoft YaHei','PingFang SC',sans-serif}
+@font-face{font-family:'FZZhanBiHei-M22S';src:url('/assets/FZZhanBiHei-M22S.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
