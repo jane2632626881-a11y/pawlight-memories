@@ -476,6 +476,25 @@ export default function Home() {
       setBusy(false);
     }
   }
+  async function resetDemo() {
+    if (!window.confirm('确定重置 App 吗？宠物名字、时间线和已上传的照片都会清空。')) return;
+    await run(async () => {
+      const response = await fetch('/api/archive', { method: 'DELETE' });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw Error(data.error || '暂时无法重置');
+      sessionStorage.removeItem('pawlight-draft');
+      setArchive({ name: '', ready: false, events: [] });
+      setVersion(0);
+      setDraft(null);
+      setAnn(null);
+      setCurrent(null);
+      setCompanion(null);
+      setMenu(false);
+      history.replaceState({ pawlight: true, screen: 1 }, '', '#1');
+      setScreen(1);
+      setTimeout(() => go(2, true), 1100);
+    });
+  }
   async function saveEvent(event: Memory, target = 11) {
     await run(async () => {
       const item = {
@@ -1528,6 +1547,9 @@ export default function Home() {
               加入两段示例记忆
             </Button>
           )}
+          <Button className="secondary danger" disabled={busy} onClick={resetDemo}>
+            重置 App
+          </Button>
           <Action secondary onClick={() => setMenu(false)}>
             完成
           </Action>
