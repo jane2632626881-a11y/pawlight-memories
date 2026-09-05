@@ -2,4 +2,7 @@
 /* Editable pet portrait on the identity confirmation screen. */
 .avatar-picker{position:relative;border:0;background:none;padding:0;margin:20px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .avatar-picker img{margin:0}
-.avatar-picker span{background:var(--brown);color:var(--paper);border-radius:18px;padding:5px 14px;font-size:14px}
+.screen-2 .profile-hero{background:url('/assets/profile-card-bg.png') center/92% 88% no-repeat}
+.screen-3 .identity{background:transparent url('/assets/identity-card-bg.png') center/100% 100% no-repeat;border-radius:0}
+.screen-3 .avatar-picker{margin:34px 20px 14px;padding:0;border-radius:50%}
+.screen-3 .avatar-picker img{margin:0}

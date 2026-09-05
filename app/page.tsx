@@ -833,13 +833,6 @@ export default function Home() {
             src={archive.avatar || `${A}portrait.png`}
             alt={`${name}的宠物照片`}
           />
-          <span>
-            {uploading
-              ? '正在上传…'
-              : archive.avatar
-                ? '更换照片'
-                : '上传宠物照片'}
-          </span>
         </button>
         <p>名字</p>
         <h2>{name}</h2>
