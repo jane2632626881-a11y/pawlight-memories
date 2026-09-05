@@ -6,3 +6,6 @@
 .screen-3 .identity{background:transparent url('/assets/identity-card-bg.png') center/100% 100% no-repeat;border-radius:0}
 .screen-3 .avatar-picker{margin:34px 20px 14px;padding:0;border-radius:50%}
 .screen-3 .avatar-picker img{margin:0}
+.screen-3 .identity h2{transform:translateY(-10px)}
+body,button,input,textarea,select,h1,h2,h3,.choice,.name-label{font-family:'FZZhanBiHei-M22S','Microsoft YaHei',sans-serif}
+small,.hint,.counter,.tiny-tag,.event-copy time,.event-copy p{font-family:'Microsoft YaHei','PingFang SC',sans-serif}
