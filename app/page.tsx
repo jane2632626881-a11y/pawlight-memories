@@ -17,7 +17,6 @@ import {
   dateLabel,
   feelings,
   anniversaryKinds,
-  seedEvents,
   validDate,
 } from '@/lib/model';
 
@@ -1504,55 +1503,11 @@ export default function Home() {
       </Dialog>
       <Dialog open={menu} onOpenChange={setMenu}>
         <DialogContent className="modal" showCloseButton={false}>
-          <DialogTitle>记忆里的小事</DialogTitle>
-          <DialogDescription>每段回忆都属于你的专属空间。</DialogDescription>
-          <label>
-            跳转年份
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            >
-              {Array.from({ length: 201 }, (_, i) => (
-                <option key={i} value={1900 + i}>
-                  {1900 + i}年
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button
-            className="secondary"
-            onClick={() => {
-              setMenu(false);
-              go(2);
-            }}
-          >
-            修改宠物名字
-          </Button>
-          {!archive.events.some((e) => e.id.startsWith('example-')) && (
-            <Button
-              className="secondary"
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  await persist({
-                    ...archive,
-                    events: [...archive.events, ...seedEvents()],
-                  });
-                  setYear(2023);
-                  setFilter('全部');
-                  setMenu(false);
-                })
-              }
-            >
-              加入两段示例记忆
-            </Button>
-          )}
+          <DialogTitle>重置 App</DialogTitle>
+          <DialogDescription>清空当前 Demo，重新从开屏开始。</DialogDescription>
           <Button className="secondary danger" disabled={busy} onClick={resetDemo}>
             重置 App
           </Button>
-          <Action secondary onClick={() => setMenu(false)}>
-            完成
-          </Action>
         </DialogContent>
       </Dialog>
     </>
