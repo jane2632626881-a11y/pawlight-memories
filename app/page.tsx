@@ -882,6 +882,7 @@ export default function Home() {
     const ritualWords = '它已经变成了光，从此每晚陪你入睡';
     content = (
       <div className={`light-ritual ${ritualLit ? 'is-lit' : ''}`}>
+        <img className="ritual-decor" src={`${A}decor-hearts.png`} alt="" />
         <button
           className="ritual-lamp"
           type="button"
@@ -895,13 +896,16 @@ export default function Home() {
         </button>
         {!ritualLit && <p className="ritual-hint">轻触灯芯，点亮属于它的光</p>}
         {ritualLit && (
-          <output className="ritual-words" aria-label={ritualWords}>
-            {Array.from(ritualWords).map((character, index) => (
-              <span key={`${character}-${index}`} style={{ animationDelay: `${index * 90}ms` }}>
-                {character}
-              </span>
-            ))}
-          </output>
+          <div className="ritual-message">
+            <img src={`${A}decor-highlight.png`} alt="" />
+            <output className="ritual-words" aria-label={ritualWords}>
+              {Array.from(ritualWords).map((character, index) => (
+                <span key={`${character}-${index}`} style={{ animationDelay: `${index * 90}ms` }}>
+                  {character}
+                </span>
+              ))}
+            </output>
+          </div>
         )}
       </div>
     );
