@@ -270,6 +270,7 @@ export default function Home() {
     [uploadProgress, setUploadProgress] = useState(''),
     [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const galleryInput = useRef<HTMLInputElement>(null),
+    avatarInput = useRef<HTMLInputElement>(null),
     captureInput = useRef<HTMLInputElement>(null),
     video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
@@ -482,7 +483,7 @@ export default function Home() {
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw Error(data.error || '暂时无法重置');
       sessionStorage.removeItem('pawlight-draft');
-      setArchive({ name: '', ready: false, events: [] });
+      setArchive({ name: '', ready: false, events: [], avatar: '' });
       setVersion(0);
       setDraft(null);
       setAnn(null);
@@ -594,6 +595,39 @@ export default function Home() {
       setUploading(false);
       uploadLock.current = false;
       setUploadProgress('');
+    }
+  }
+  async function uploadAvatar(file: File | undefined) {
+    if (!file || uploadLock.current) return;
+    if (!file.type.startsWith('image/')) {
+      setMessage('请选择照片文件');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setMessage('照片不能超过 50 MB');
+      return;
+    }
+    uploadLock.current = true;
+    setUploading(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/media', {
+        method: 'POST',
+        headers: {
+          'Content-Type': file.type,
+          'X-File-Name': encodeURIComponent(file.name),
+        },
+        body: file,
+      });
+      const item = (await response.json()) as Media & { error?: string };
+      if (!response.ok) throw Error(item.error || '上传失败');
+      setArchive((value) => ({ ...value, avatar: item.url }));
+      setMessage('宠物照片已更新');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '上传失败，请重试');
+    } finally {
+      uploadLock.current = false;
+      setUploading(false);
     }
   }
   function choose(files: FileList | null) {
@@ -778,7 +812,35 @@ export default function Home() {
   if (screen === 3) {
     content = (
       <div className="identity">
-        <img src={`${A}portrait.png`} alt="宠物档案默认头像" />
+        <input
+          ref={avatarInput}
+          className="hidden"
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            void uploadAvatar(event.target.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+        />
+        <button
+          className="avatar-picker"
+          type="button"
+          disabled={uploading}
+          onClick={() => avatarInput.current?.click()}
+          aria-label="从相册选择宠物照片"
+        >
+          <img
+            src={archive.avatar || `${A}portrait.png`}
+            alt={`${name}的宠物照片`}
+          />
+          <span>
+            {uploading
+              ? '正在上传…'
+              : archive.avatar
+                ? '更换照片'
+                : '上传宠物照片'}
+          </span>
+        </button>
         <p>名字</p>
         <h2>{name}</h2>
       </div>
