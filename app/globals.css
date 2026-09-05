@@ -17,3 +17,22 @@ header.align-left .title-row{justify-content:flex-start}
 .title-paw{width:27px;height:27px;object-fit:contain}
 .title-highlight{position:absolute;width:150px;height:30px;object-fit:fill;left:50%;bottom:-8px;transform:translateX(-50%);z-index:-1;opacity:.88}
 .tag-paw{width:16px;height:16px;object-fit:contain}
+.screen-17{overflow:hidden;background-color:#21150e;background-image:radial-gradient(circle at 50% 43%,#6e3b1d 0,#342015 28%,#1e130d 62%),url('/assets/paper.svg');color:#fff6df}
+.screen-17 header{z-index:2}.screen-17 header p,.screen-17 .ritual-hint{color:#d7bea0}.screen-17 .back{filter:brightness(0) invert(1);opacity:.85}.screen-17 .grass{opacity:.22}.screen-17 footer{z-index:4}.screen-17 .primary{background:#fff3cf;border-color:#fff3cf;color:#57331a;box-shadow:0 0 28px #ffc45c66}
+.light-ritual{position:relative;flex:1;min-height:490px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:38px;margin-top:-30px}
+.ritual-lamp{position:relative;width:210px;height:260px;border:0;background:none;padding:0;display:flex;align-items:flex-end;justify-content:center;isolation:isolate}
+.ritual-lamp:active:not(:disabled){transform:scale(.98)}
+.lamp-glow{position:absolute;width:90px;height:90px;left:60px;top:70px;border-radius:50%;background:#8b552922;transition:all 1.8s ease;z-index:-1}
+.lamp-flame{position:absolute;width:33px;height:48px;left:89px;top:91px;border-radius:52% 48% 50% 50%/66% 64% 36% 34%;background:#6f4b31;transform:rotate(4deg) scale(.7);transform-origin:50% 100%;transition:all 1.2s ease;z-index:2}
+.lamp-body{width:128px;height:118px;border:2px solid #b7834f;border-radius:48% 48% 26% 26%/35% 35% 18% 18%;background:linear-gradient(145deg,#8e603b,#4d2d1a);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 24px #1f100d66,0 18px 28px #0008}
+.lamp-body .icon{filter:brightness(0) invert(1);opacity:.68}
+.is-lit .lamp-flame{background:radial-gradient(circle at 50% 70%,#fffde0 0 16%,#ffd45f 38%,#ff8c32 72%);box-shadow:0 0 18px #fff7bd,0 0 44px #ffb339;transform:rotate(4deg) scale(1);animation:flame-dance 1.5s ease-in-out infinite}
+.is-lit .lamp-glow{width:310px;height:310px;left:-50px;top:-38px;background:radial-gradient(circle,#ffd9778c 0,#ffb43a3d 34%,transparent 70%);animation:ritual-breathe 3s ease-in-out infinite}
+.ritual-hint{font-size:15px;letter-spacing:2px;animation:ritual-breathe 2.4s ease-in-out infinite}
+.ritual-words{max-width:330px;margin:0;text-align:center;color:#fff4ce!important;font-size:22px;line-height:2.05;letter-spacing:2px;text-shadow:0 0 16px #ffbf5b;display:flex;flex-wrap:wrap;justify-content:center}
+.ritual-words span{display:inline-block;opacity:0;animation:word-arrive .75s ease-out forwards,char-float 2.7s ease-in-out infinite}
+@keyframes flame-dance{0%,100%{transform:rotate(3deg) scale(1)}50%{transform:rotate(-4deg) scale(.92,1.08)}}
+@keyframes ritual-breathe{50%{transform:scale(1.08);opacity:.78}}
+@keyframes word-arrive{0%{opacity:0;transform:translateY(16px) scale(.7)}70%{transform:translateY(-5px) scale(1.08)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes char-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
