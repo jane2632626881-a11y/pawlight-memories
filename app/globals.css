@@ -12,3 +12,8 @@
 body,button,input,textarea,select,h1,h2,h3,.choice,.name-label{font-family:'FZZhanBiHei-M22S','Microsoft YaHei',sans-serif}
 small,.hint,.counter,.tiny-tag,.event-copy time,.event-copy p{font-family:'Microsoft YaHei','PingFang SC',sans-serif}
 @font-face{font-family:'FZZhanBiHei-M22S';src:url('/assets/FZZhanBiHei-M22S.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+.title-row{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+header.align-left .title-row{justify-content:flex-start}
+.title-paw{width:27px;height:27px;object-fit:contain}
+.title-highlight{position:absolute;width:150px;height:30px;object-fit:fill;left:50%;bottom:-8px;transform:translateX(-50%);z-index:-1;opacity:.88}
+.tag-paw{width:16px;height:16px;object-fit:contain}

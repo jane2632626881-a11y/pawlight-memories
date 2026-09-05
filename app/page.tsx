@@ -980,7 +980,9 @@ export default function Home() {
                 })
               }
             >
-              {draft.tags.includes(t) ? '✓ ' : ''}
+              {draft.tags.includes(t) && (
+                <img className="tag-paw" src={`${A}decor-paw.png`} alt="" />
+              )}
               {t}
             </Button>
           ))}
@@ -1489,12 +1491,20 @@ export default function Home() {
             isTimeline || [13, 15].includes(screen) ? 'align-left' : ''
           }
         >
-          <h1 ref={heading} tabIndex={-1}>
-            {titles[screen]}
-          </h1>
+          <div className="title-row">
+            <h1 ref={heading} tabIndex={-1}>
+              {titles[screen]}
+            </h1>
+            {isTimeline && (
+              <img className="title-paw" src={`${A}decor-paw.png`} alt="" />
+            )}
+            {screen === 4 && (
+              <img className="title-highlight" src={`${A}decor-highlight.png`} alt="" />
+            )}
+          </div>
           {subtitles[screen] && <p>{subtitles[screen]}</p>}
           {[5, 6, 7, 8, 10].includes(screen) && (
-            <img className="hearts" src={`${A}hearts.svg`} alt="" />
+            <img className="hearts" src={`${A}decor-hearts.png`} alt="" />
           )}
         </header>
         <section className="content">{content}</section>
