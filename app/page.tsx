@@ -1408,10 +1408,10 @@ export default function Home() {
           <div>
             <h3>
               {connection === 'on'
-                ? '骨灰盒已连接'
+                ? '光宠已连接'
                 : connection === 'connecting'
                   ? '正在连接小屋…'
-                  : '连接骨灰盒'}
+                  : '连接光宠'}
             </h3>
             <p>
               {name}的小屋 ·{' '}
