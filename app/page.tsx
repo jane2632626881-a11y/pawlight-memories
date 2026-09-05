@@ -268,7 +268,8 @@ export default function Home() {
     [companion, setCompanion] = useState<Memory | null>(null),
     [uploading, setUploading] = useState(false),
     [uploadProgress, setUploadProgress] = useState(''),
-    [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    [pendingFiles, setPendingFiles] = useState<File[]>([]),
+    [ritualLit, setRitualLit] = useState(false);
   const galleryInput = useRef<HTMLInputElement>(null),
     avatarInput = useRef<HTMLInputElement>(null),
     captureInput = useRef<HTMLInputElement>(null),
@@ -333,7 +334,7 @@ export default function Home() {
   useEffect(() => {
     const fn = (e: PopStateEvent) => {
       const s = e.state?.screen;
-      const allowed = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+      const allowed = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
       setCalendarOpen(false);
       setCameraOpen(false);
       if (allowed.includes(s)) {
@@ -489,6 +490,7 @@ export default function Home() {
       setAnn(null);
       setCurrent(null);
       setCompanion(null);
+      setRitualLit(false);
       setMenu(false);
       history.replaceState({ pawlight: true, screen: 1 }, '', '#1');
       setScreen(1);
@@ -539,6 +541,7 @@ export default function Home() {
       13: 12,
       14: 11,
       15: 11,
+      17: 4,
     };
     go(map[screen] ?? 11);
   }
@@ -706,6 +709,7 @@ export default function Home() {
     14: '发送成功',
     15: '新的陪伴记录',
     16: `${name}的记忆`,
+    17: '为思念，点一盏灯',
   };
   const subtitles: Record<number, string> = {
     2: '为它，留下一本关于陪伴的故事',
@@ -719,6 +723,7 @@ export default function Home() {
     10: '把重要的日子，好好留在这里',
     13: `让这一刻化成温柔的光，陪伴在${name}身边`,
     15: `${name}的小屋，刚刚感受到了你的想念`,
+    17: `轻轻触碰，让${name}化作一束温柔的光`,
   };
   const visible = archive.events
     .filter(
@@ -864,13 +869,43 @@ export default function Home() {
         onClick={() =>
           run(async () => {
             await persist({ ...archive, ready: true });
-            go(11);
+            setRitualLit(false);
+            go(17);
           })
         }
       >
         {busy ? '正在建立空间…' : '开始使用'}
       </Action>
     );
+  }
+  if (screen === 17) {
+    const ritualWords = '它已经变成了光，从此每晚陪你入睡';
+    content = (
+      <div className={`light-ritual ${ritualLit ? 'is-lit' : ''}`}>
+        <button
+          className="ritual-lamp"
+          type="button"
+          aria-label={ritualLit ? '纪念灯已点亮' : '点亮纪念灯'}
+          aria-pressed={ritualLit}
+          onClick={() => setRitualLit(true)}
+        >
+          <span className="lamp-flame" />
+          <span className="lamp-glow" />
+          <span className="lamp-body"><Icon name="paw" size={30} /></span>
+        </button>
+        {!ritualLit && <p className="ritual-hint">轻触灯芯，点亮属于它的光</p>}
+        {ritualLit && (
+          <output className="ritual-words" aria-label={ritualWords}>
+            {Array.from(ritualWords).map((character, index) => (
+              <span key={`${character}-${index}`} style={{ animationDelay: `${index * 90}ms` }}>
+                {character}
+              </span>
+            ))}
+          </output>
+        )}
+      </div>
+    );
+    footer = ritualLit ? <Action onClick={() => go(11)}>进入记忆时间线</Action> : null;
   }
   if (screen === 5 && draft) {
     content = (
@@ -1578,3 +1613,4 @@ export default function Home() {
     </>
   );
 }
+
