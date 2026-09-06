@@ -17,10 +17,34 @@ import {
   dateLabel,
   feelings,
   anniversaryKinds,
+  seedEvents,
   validDate,
 } from '@/lib/model';
 
 const A = '/assets/';
+type DeviceState = {
+  connected: boolean;
+  always_on: boolean;
+  audio_enabled: boolean;
+};
+type DeviceEvent = {
+  id: string;
+  type: 'memory_recalled' | 'companion_triggered';
+  trigger?: 'touch' | 'voice';
+  touch_kind?: 'quick' | 'slow';
+  memory_id?: string;
+  memory_title?: string;
+  emotion: string;
+  transcript: string;
+  created_at: string;
+};
+const emotionTag: Record<string, string> = {
+  warm: '温暖',
+  happy: '快乐',
+  calm: '平静',
+  miss: '想念',
+  sad: '难过',
+};
 function Icon({ name, size = 28 }: { name: string; size?: number }) {
   return (
     <img
@@ -265,7 +289,16 @@ export default function Home() {
     [cameraError, setCameraError] = useState(''),
     [menu, setMenu] = useState(false),
     [connection, setConnection] = useState<'off' | 'connecting' | 'on'>('off'),
+    [deviceState, setDeviceState] = useState<DeviceState>({
+      connected: false,
+      always_on: false,
+      audio_enabled: false,
+    }),
     [companion, setCompanion] = useState<Memory | null>(null),
+    [companionEventId, setCompanionEventId] = useState(''),
+    [companionTrigger, setCompanionTrigger] = useState<'touch' | 'voice'>(
+      'touch',
+    ),
     [uploading, setUploading] = useState(false),
     [uploadProgress, setUploadProgress] = useState(''),
     [pendingFiles, setPendingFiles] = useState<File[]>([]),
@@ -276,14 +309,30 @@ export default function Home() {
     video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
     lock = useRef(false),
-    lastTap = useRef(0),
     screenRef = useRef(screen),
+    deviceEventSince = useRef(Date.now() - 5000),
+    activeDeviceEvent = useRef(''),
     heading = useRef<HTMLHeadingElement>(null),
     uploadLock = useRef(false);
-  screenRef.current = screen;
-  type ArchivePayload = { archive: Archive | null; version: number; error?: string };
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+  type ArchivePayload = {
+    archive: Archive | null;
+    version: number;
+    error?: string;
+  };
   type SavePayload = { version: number; error?: string };
   const name = archive.name || '它';
+  const syncArchive = async (value: Archive) => {
+    try {
+      await fetch('/api/device/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
+    } catch {}
+  };
   function go(next: number, replace = false) {
     if (replace)
       history.replaceState({ pawlight: true, screen: next }, '', `#${next}`);
@@ -306,6 +355,7 @@ export default function Home() {
       if (!response.ok) throw Error(data.error);
       if (data.archive) {
         setArchive(data.archive);
+        void syncArchive(data.archive);
         setVersion(data.version);
         const years = data.archive.events.map((e: Memory) =>
           Number(e.date.slice(0, 4)),
@@ -382,13 +432,116 @@ export default function Home() {
           e instanceof Error ? `相机未开启：${e.message}` : '无法开启相机',
         );
       }
-    })();
+    })().catch(() => {});
     return () => {
       cancelled = true;
       stream.current?.getTracks().forEach((t) => t.stop());
       stream.current = null;
     };
   }, [cameraOpen]);
+  useEffect(() => {
+    if (!archive.ready) return;
+    let stopped = false;
+    let running = false;
+    async function pollDevice() {
+      if (running || stopped) return;
+      running = true;
+      try {
+        const stateResponse = await fetch('/api/device/state', {
+          cache: 'no-store',
+        });
+        if (stateResponse.ok) {
+          const state = (await stateResponse.json()) as DeviceState;
+          if (!stopped) {
+            setDeviceState(state);
+            setConnection(state.connected ? 'on' : 'off');
+            setRitualLit(state.always_on);
+          }
+        } else if (!stopped) {
+          setConnection('off');
+          setDeviceState({
+            connected: false,
+            always_on: false,
+            audio_enabled: false,
+          });
+        }
+        const eventResponse = await fetch('/api/device/events', {
+          cache: 'no-store',
+        });
+        if (eventResponse.ok) {
+          const data = (await eventResponse.json()) as {
+            events: DeviceEvent[];
+          };
+          const event =
+            screenRef.current === 15
+              ? undefined
+              : [...(data.events || [])].reverse().find((item) => {
+                  if (
+                    item.type !== 'memory_recalled' &&
+                    item.type !== 'companion_triggered'
+                  )
+                    return false;
+                  const created = Date.parse(item.created_at);
+                  return (
+                    Number.isFinite(created) &&
+                    created >= deviceEventSince.current
+                  );
+                });
+          if (event && !stopped && event.id !== activeDeviceEvent.current) {
+            const created = Date.parse(event.created_at);
+            if (Number.isFinite(created))
+              deviceEventSince.current = Math.max(
+                deviceEventSince.current,
+                created + 1,
+              );
+            activeDeviceEvent.current = event.id;
+            setCompanionEventId(event.id);
+            const trigger =
+              event.type === 'memory_recalled'
+                ? 'voice'
+                : event.trigger || 'touch';
+            setCompanionTrigger(trigger);
+            const recalledTitle = event.memory_title || '一段回忆';
+            setCompanion({
+              ...blankMemory('companion'),
+              id: `companion-${event.id}`,
+              title:
+                event.type === 'memory_recalled'
+                  ? `想起「${recalledTitle}」`
+                  : trigger === 'voice'
+                    ? `你呼唤了${name}`
+                    : `你轻触了${name}`,
+              text:
+                event.transcript ||
+                (event.touch_kind === 'slow'
+                  ? '你轻轻抚摸着它，安静地陪伴了一会儿。'
+                  : '你碰了碰它的小屋，又想起了在一起的时光。'),
+              tags: [emotionTag[event.emotion] || '想念'],
+              createdAt: event.created_at || new Date().toISOString(),
+            });
+            go(15);
+          }
+        }
+      } catch {
+        if (!stopped) {
+          setConnection('off');
+          setDeviceState({
+            connected: false,
+            always_on: false,
+            audio_enabled: false,
+          });
+        }
+      } finally {
+        running = false;
+      }
+    }
+    void pollDevice();
+    const timer = setInterval(pollDevice, 1200);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [archive.ready]);
   const stateRef = useRef({ archive, year });
   stateRef.current = { archive, year };
   useEffect(() => {
@@ -461,6 +614,7 @@ export default function Home() {
     if (!response.ok) throw Error(data.error || '暂时无法保存');
     setArchive(next);
     setVersion(data.version);
+    void syncArchive(next);
     return next;
   }
   async function run(task: () => Promise<void>) {
@@ -478,13 +632,19 @@ export default function Home() {
     }
   }
   async function resetDemo() {
-    if (!window.confirm('确定重置 App 吗？宠物名字、时间线和已上传的照片都会清空。')) return;
+    if (
+      !window.confirm(
+        '确定重置 App 吗？宠物名字、时间线和已上传的照片都会清空。',
+      )
+    )
+      return;
     await run(async () => {
       const response = await fetch('/api/archive', { method: 'DELETE' });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw Error(data.error || '暂时无法重置');
       sessionStorage.removeItem('pawlight-draft');
       setArchive({ name: '', ready: false, events: [], avatar: '' });
+      void syncArchive({ name: '', ready: false, events: [], avatar: '' });
       setVersion(0);
       setDraft(null);
       setAnn(null);
@@ -510,6 +670,18 @@ export default function Home() {
         events: [...archive.events.filter((e) => e.id !== item.id), item],
       };
       await persist(next);
+      if (item.kind === 'companion' && companionEventId) {
+        try {
+          const acknowledged = await fetch(
+            `/api/device/events/${encodeURIComponent(companionEventId)}`,
+            { method: 'POST' },
+          );
+          if (acknowledged.ok) {
+            setCompanionEventId('');
+            activeDeviceEvent.current = '';
+          }
+        } catch {}
+      }
       setYear(Number(item.date.slice(0, 4)));
       setFilter('全部');
       setCurrent(item);
@@ -658,39 +830,72 @@ export default function Home() {
       0.92,
     );
   }
-  function triggerCompanion() {
-    if (!archive.ready || screenRef.current === 15 || busy || uploading) return;
-    const event = {
-      ...blankMemory('companion'),
-      title: `你呼唤了${name}`,
-      text: '你轻触了它的小屋，又想起了在一起的时光。',
-      tags: ['想念'],
-    };
-    setCompanion(event);
-    go(15);
-  }
-  function doubleTap(e: React.PointerEvent) {
-    if (
-      e.pointerType === 'mouse' ||
-      (e.target as HTMLElement).closest(
-        'button,input,textarea,select,a,video,[role="dialog"]',
-      )
-    )
-      return;
-    const now = Date.now();
-    if (now - lastTap.current < 320) {
-      lastTap.current = 0;
-      triggerCompanion();
-    } else lastTap.current = now;
-  }
   function openEvent(e: Memory) {
     setCurrent(e);
     go(12);
   }
-  function connect() {
-    if (connection !== 'off') return;
+  async function refreshConnection() {
     setConnection('connecting');
-    setTimeout(() => setConnection('on'), 1200);
+    try {
+      const response = await fetch('/api/device/state', { cache: 'no-store' });
+      const state = (await response.json()) as DeviceState & { error?: string };
+      if (!response.ok) throw Error(state.error || '无法连接硬件网关');
+      setDeviceState(state);
+      setConnection(state.connected ? 'on' : 'off');
+      setRitualLit(state.always_on);
+      if (!state.connected) setMessage('网关已启动，但暂未检测到 ESP32');
+    } catch (error) {
+      setConnection('off');
+      setMessage(error instanceof Error ? error.message : '无法连接硬件网关');
+    }
+  }
+  async function setAlwaysOn(enabled: boolean) {
+    await run(async () => {
+      const response = await fetch('/api/device/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ always_on: enabled }),
+      });
+      const state = (await response.json()) as DeviceState & { error?: string };
+      if (!response.ok) throw Error(state.error || '无法切换长明灯');
+      setDeviceState(state);
+      setConnection(state.connected ? 'on' : 'off');
+      setRitualLit(state.always_on);
+      setMessage(
+        enabled
+          ? '长明灯已开启，语音识别已暂停'
+          : '长明灯已关闭，语音识别已恢复',
+      );
+    });
+  }
+  async function sendCurrentEffect() {
+    if (!current) return;
+    await run(async () => {
+      const response = await fetch('/api/device/effect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emotion:
+            (
+              {
+                温暖: 'warm',
+                快乐: 'happy',
+                平静: 'calm',
+                想念: 'miss',
+                难过: 'sad',
+              } as Record<string, string>
+            )[current.tags[0]] || 'warm',
+          hold_ms: 12000,
+        }),
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!response.ok || !result.ok)
+        throw Error(result.error || 'ESP32 尚未连接');
+      go(14);
+    });
   }
   const isTimeline = screen === 11 || screen === 16;
   const titles: Record<number, string> = {
@@ -868,7 +1073,11 @@ export default function Home() {
         disabled={busy}
         onClick={() =>
           run(async () => {
-            await persist({ ...archive, ready: true });
+            await persist({
+              ...archive,
+              ready: true,
+              events: archive.events.length ? archive.events : seedEvents(),
+            });
             setRitualLit(false);
             go(17);
           })
@@ -888,19 +1097,25 @@ export default function Home() {
           type="button"
           aria-label={ritualLit ? '纪念灯已点亮' : '点亮纪念灯'}
           aria-pressed={ritualLit}
-          onClick={() => setRitualLit(true)}
+          disabled={busy}
+          onClick={() => void setAlwaysOn(!ritualLit)}
         >
           <span className="lamp-flame" />
           <span className="lamp-glow" />
-          <span className="lamp-body"><Icon name="paw" size={30} /></span>
+          <span className="lamp-body">
+            <Icon name="paw" size={30} />
+          </span>
         </button>
-        {!ritualLit && <p className="ritual-hint">轻触灯芯，点亮属于它的光</p>}
+        {!ritualLit && <p className="ritual-hint">轻触灯芯，开启平静长明灯</p>}
         {ritualLit && (
           <div className="ritual-message">
             <img src={`${A}decor-highlight.png`} alt="" />
             <output className="ritual-words" aria-label={ritualWords}>
               {Array.from(ritualWords).map((character, index) => (
-                <span key={`${character}-${index}`} style={{ animationDelay: `${index * 90}ms` }}>
+                <span
+                  key={`${character}-${index}`}
+                  style={{ animationDelay: `${index * 90}ms` }}
+                >
                   {character}
                 </span>
               ))}
@@ -909,7 +1124,18 @@ export default function Home() {
         )}
       </div>
     );
-    footer = ritualLit ? <Action onClick={() => go(11)}>进入记忆时间线</Action> : null;
+    footer = (
+      <div className="actions">
+        <Action
+          secondary
+          disabled={busy}
+          onClick={() => void setAlwaysOn(!ritualLit)}
+        >
+          {ritualLit ? '关闭长明灯' : '开启长明灯'}
+        </Action>
+        <Action onClick={() => go(11)}>进入记忆时间线</Action>
+      </div>
+    );
   }
   if (screen === 5 && draft) {
     content = (
@@ -1311,7 +1537,9 @@ export default function Home() {
             )}
           </div>
         )}
-        <p className="hint center">双击页面空白处，模拟小屋的陪伴触发</p>
+        <p className="hint center">
+          触碰实体宠物灯或完成一次语音对话，会自动记录新的陪伴
+        </p>
       </>
     );
     footer = (
@@ -1402,7 +1630,7 @@ export default function Home() {
         <Button
           className={`choice device ${connection === 'on' ? 'sage' : ''}`}
           disabled={connection === 'connecting'}
-          onClick={connect}
+          onClick={() => void refreshConnection()}
         >
           <Icon name="urn" size={44} />
           <div>
@@ -1415,23 +1643,24 @@ export default function Home() {
             </h3>
             <p>
               {name}的小屋 ·{' '}
-              {connection === 'on' ? '模拟连接成功' : '点击开始模拟连接'}
+              {connection === 'on'
+                ? deviceState.always_on
+                  ? '长明灯模式'
+                  : '语音模式'
+                : '点击刷新设备状态'}
             </p>
           </div>
           {connection === 'on' && <span className="right">✓</span>}
         </Button>
-        <p className="hint center">演示模式：连接和发送暂由模拟设备完成</p>
+        <p className="hint center">
+          由本机网关连接 ESP32，设备需与电脑处于同一网络
+        </p>
       </>
     );
     footer = (
       <Action
         disabled={connection !== 'on' || busy}
-        onClick={() =>
-          run(async () => {
-            await new Promise((r) => setTimeout(r, 1100));
-            go(14);
-          })
-        }
+        onClick={() => void sendCurrentEffect()}
       >
         {busy ? '正在发送…' : '发送'}
       </Action>
@@ -1468,18 +1697,29 @@ export default function Home() {
             <Icon name="wave" size={70} />
             <div>
               <h2>{companion.title}</h2>
-              <p>这份想念被温柔地记录下来</p>
+              <p>
+                {companionTrigger === 'voice'
+                  ? '一次倾诉被温柔地记录下来'
+                  : '一次触碰化作了新的陪伴'}
+              </p>
             </div>
           </div>
           <hr />
-          <p>触发方式：双击屏幕（模拟硬件触摸）</p>
+          <p>
+            触发方式：
+            {companionTrigger === 'voice' ? '语音对话' : '触碰实体宠物灯'}
+          </p>
         </div>
         <h3>这次陪伴来自</h3>
         <div className="tags compact">
-          <span className="tag">触摸</span>
-          <span className="tag selected">想念</span>
+          <span className="tag">
+            {companionTrigger === 'voice' ? '语音' : '触摸'}
+          </span>
+          <span className="tag selected">{companion.tags[0] || '想念'}</span>
         </div>
-        <blockquote>“每一次呼唤，都是仍在继续的陪伴。”</blockquote>
+        <blockquote>
+          {companion.text || '每一次呼唤，都是仍在继续的陪伴。'}
+        </blockquote>
       </>
     );
     footer = (
@@ -1492,15 +1732,6 @@ export default function Home() {
     <>
       <main
         className={`phone screen-${screen} ${isTimeline ? 'timeline-screen' : ''}`}
-        onDoubleClick={(e) => {
-          if (
-            !(e.target as HTMLElement).closest(
-              'button,input,textarea,select,a,video',
-            )
-          )
-            triggerCompanion();
-        }}
-        onPointerUp={doubleTap}
       >
         <div className="topbar">
           {![2, 11, 16].includes(screen) ? (
@@ -1538,7 +1769,11 @@ export default function Home() {
               <img className="title-paw" src={`${A}decor-paw.png`} alt="" />
             )}
             {screen === 4 && (
-              <img className="title-highlight" src={`${A}decor-highlight.png`} alt="" />
+              <img
+                className="title-highlight"
+                src={`${A}decor-highlight.png`}
+                alt=""
+              />
             )}
           </div>
           {subtitles[screen] && <p>{subtitles[screen]}</p>}
@@ -1607,9 +1842,22 @@ export default function Home() {
       </Dialog>
       <Dialog open={menu} onOpenChange={setMenu}>
         <DialogContent className="modal" showCloseButton={false}>
-          <DialogTitle>重置 App</DialogTitle>
-          <DialogDescription>清空当前 Demo，重新从开屏开始。</DialogDescription>
-          <Button className="secondary danger" disabled={busy} onClick={resetDemo}>
+          <DialogTitle>更多选项</DialogTitle>
+          <DialogDescription>管理光宠和本地纪念空间。</DialogDescription>
+          <Button
+            className="secondary"
+            onClick={() => {
+              setMenu(false);
+              go(17);
+            }}
+          >
+            {deviceState.always_on ? '查看长明灯' : '开启长明灯'}
+          </Button>
+          <Button
+            className="secondary danger"
+            disabled={busy}
+            onClick={resetDemo}
+          >
             重置 App
           </Button>
         </DialogContent>
@@ -1617,4 +1865,3 @@ export default function Home() {
     </>
   );
 }
-
